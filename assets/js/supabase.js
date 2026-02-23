@@ -4,10 +4,132 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Check if Supabase is properly configured
+const isSupabaseConfigured = supabaseUrl && supabaseAnonKey && 
+                            supabaseUrl !== 'undefined' && 
+                            supabaseAnonKey !== 'undefined'
 
-// Authentication helpers
-export const auth = {
+console.log('[Auth] Supabase configured:', isSupabaseConfigured)
+
+let supabase
+if (isSupabaseConfigured) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+} else {
+  console.warn('[Auth] Supabase env variables not found. Using localStorage fallback mode.')
+  supabase = null
+}
+
+export { supabase }
+
+// localStorage-based authentication fallback (for development without Supabase)
+const localStorageAuth = {
+  async signUp(email, password, userData = {}) {
+    // Mock user creation with localStorage
+    const userId = 'user_' + Math.random().toString(36).substr(2, 9)
+    const userData_with_id = {
+      id: userId,
+      email,
+      user_metadata: {
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        phone: userData.phone || '',
+        investment_type: userData.investment_type || ''
+      },
+      email_confirmed_at: new Date().toISOString()
+    }
+    
+    const sessionData = {
+      user: userData_with_id,
+      session: {
+        access_token: 'mock_token_' + Date.now(),
+        refresh_token: 'mock_refresh_' + Date.now()
+      },
+      loginTime: new Date().toISOString(),
+      ...userData
+    }
+    
+    localStorage.setItem('userSession', JSON.stringify(sessionData))
+    localStorage.setItem('users_' + email, JSON.stringify(userData_with_id))
+    
+    return { 
+      data: { 
+        user: userData_with_id, 
+        session: sessionData.session 
+      }, 
+      error: null 
+    }
+  },
+
+  async signIn(email, password) {
+    // Mock authentication with localStorage
+    const sessionData = {
+      user: {
+        id: 'user_' + Math.random().toString(36).substr(2, 9),
+        email,
+        user_metadata: {
+          first_name: '',
+          last_name: '',
+          phone: ''
+        },
+        email_confirmed_at: new Date().toISOString()
+      },
+      session: {
+        access_token: 'mock_token_' + Date.now(),
+        refresh_token: 'mock_refresh_' + Date.now()
+      },
+      loginTime: new Date().toISOString()
+    }
+    
+    localStorage.setItem('userSession', JSON.stringify(sessionData))
+    
+    return { 
+      data: { 
+        user: sessionData.user, 
+        session: sessionData.session 
+      }, 
+      error: null 
+    }
+  },
+
+  async signOut() {
+    localStorage.removeItem('userSession')
+    localStorage.removeItem('rememberUser')
+    return { error: null }
+  },
+
+  async getUser() {
+    const localSession = localStorage.getItem('userSession')
+    if (localSession) {
+      const sessionData = JSON.parse(localSession)
+      // Check if session is still valid (24 hours)
+      const loginTime = new Date(sessionData.loginTime)
+      const now = new Date()
+      const hoursSinceLogin = (now - loginTime) / (1000 * 60 * 60)
+      
+      if (hoursSinceLogin < 24) {
+        return { user: sessionData.user, error: null }
+      }
+    }
+    return { user: null, error: null }
+  },
+
+  async getSession() {
+    const localSession = localStorage.getItem('userSession')
+    if (localSession) {
+      const sessionData = JSON.parse(localSession)
+      return { session: sessionData.session, error: null }
+    }
+    return { session: null, error: null }
+  },
+
+  async isAuthenticated() {
+    const { user } = await this.getUser()
+    return !!user
+  }
+}
+
+// Authentication helpers - use localStorage fallback if Supabase not configured
+export const auth = isSupabaseConfigured ? {
   async signUp(email, password, userData = {}) {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -132,7 +254,7 @@ export const auth = {
     const { user } = await this.getUser()
     return !!user
   }
-}
+} : localStorageAuth  // Use localStorage fallback if Supabase not configured
 
 // Investment helpers (mock implementation for now)
 export const investments = {

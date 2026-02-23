@@ -2,45 +2,64 @@
 import { auth, investments, subscriptions } from './supabase.js'
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Check authentication first
-    checkAuthentication()
+    // Check authentication first and wait for it
+    checkAuthentication().then(isAuth => {
+        if (!isAuth) {
+            // Auth check failed, don't initialize dashboard
+            return
+        }
 
-    // Initialize dashboard components
-    initializeSidebar()
-    initializeCharts()
-    initializeNotifications()
-    initializeUserMenu()
-    initializeQuickActions()
-    
-    // Load dashboard data
-    loadDashboardData()
+        // Initialize dashboard components only after auth passes
+        initializeSidebar()
+        initializeCharts()
+        initializeNotifications()
+        initializeUserMenu()
+        initializeQuickActions()
+        
+        // Load dashboard data
+        loadDashboardData()
 
-    // Set up real-time subscriptions
-    setupRealtimeSubscriptions()
+        // Set up real-time subscriptions
+        setupRealtimeSubscriptions()
+    })
 
     async function checkAuthentication() {
         try {
+            console.log('[v0] Checking authentication...')
+            
+            // Add a small delay to allow localStorage to be read
+            await new Promise(resolve => setTimeout(resolve, 300))
+            
             const isAuthenticated = await auth.isAuthenticated()
+            console.log('[v0] Authentication result:', isAuthenticated)
             
             if (!isAuthenticated) {
+                console.log('[v0] User not authenticated, redirecting to login...')
                 showNotification('Please log in to access the dashboard', 'error')
+                
+                // Wait a bit longer before redirecting so user sees the message
                 setTimeout(() => {
                     window.location.href = 'login.html'
-                }, 2000)
-                return
+                }, 1500)
+                return false
             }
 
             // Get user data and update UI
             const { user } = await auth.getUser()
+            console.log('[v0] User data retrieved:', user?.email)
+            
             if (user) {
                 updateUserInfo(user)
             }
+            
+            return true
         } catch (error) {
-            console.error('Authentication error:', error)
+            console.error('[v0] Authentication error:', error)
             showNotification('Authentication error. Please log in again.', 'error')
             setTimeout(() => {
                 window.location.href = 'login.html'
-            }, 2000)
+            }, 1500)
+            return false
         }
     }
 
@@ -687,21 +706,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleLogout() {
         try {
+            console.log('[v0] Starting logout process...')
+            
             const { error } = await auth.signOut()
             
             if (error) {
                 throw new Error(error.message)
             }
 
+            // Ensure localStorage is cleared
+            localStorage.removeItem('userSession')
+            localStorage.removeItem('rememberUser')
+            console.log('[v0] User session cleared from localStorage')
+
             // Show logout message
             showNotification('Logged out successfully', 'success')
             
             // Redirect to login page
             setTimeout(() => {
+                console.log('[v0] Redirecting to login page...')
                 window.location.href = 'login.html'
             }, 1500)
         } catch (error) {
-            console.error('Logout error:', error)
+            console.error('[v0] Logout error:', error)
             showNotification('Error logging out', 'error')
         }
     }
