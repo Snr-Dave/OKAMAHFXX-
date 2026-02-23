@@ -2,8 +2,6 @@
 import { auth } from './supabase.js'
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Auth.js loaded and DOM ready')
-    
     // Check for existing session on page load
     checkExistingSession()
 
@@ -13,16 +11,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordInputs = document.querySelectorAll('input[type="password"]')
     const togglePasswordBtns = document.querySelectorAll('.toggle-password')
 
-    // Debug: Log form elements
-    console.log('Login form:', loginForm)
-    console.log('Signup form:', signupForm)
-    console.log('Password inputs:', passwordInputs.length)
-    console.log('Toggle buttons:', togglePasswordBtns.length)
-
     // Password visibility toggle
     togglePasswordBtns.forEach(btn => {
         btn.addEventListener('click', function() {
-            console.log('Toggle password clicked')
             const input = this.parentElement.querySelector('input')
             const icon = this.querySelector('i')
             
@@ -38,27 +29,6 @@ document.addEventListener('DOMContentLoaded', function() {
         })
     })
 
-    // Debug: Test input field responsiveness
-    const allInputs = document.querySelectorAll('input')
-    allInputs.forEach((input, index) => {
-        input.addEventListener('focus', function() {
-            console.log(`Input ${index} focused:`, this.name || this.id)
-        })
-        input.addEventListener('input', function() {
-            console.log(`Input ${index} changed:`, this.value)
-        })
-        input.addEventListener('click', function() {
-            console.log(`Input ${index} clicked:`, this.name || this.id)
-        })
-    })
-
-    // Debug: Test button responsiveness
-    const allButtons = document.querySelectorAll('button')
-    allButtons.forEach((button, index) => {
-        button.addEventListener('click', function(e) {
-            console.log(`Button ${index} clicked:`, this.textContent?.trim())
-        })
-    })
     // Password strength checker
     const passwordInput = document.getElementById('password')
     const strengthBar = document.querySelector('.strength-bar')
@@ -66,7 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (passwordInput && strengthBar && strengthText) {
         passwordInput.addEventListener('input', function() {
-            console.log('Password input changed')
             const password = this.value
             const strength = calculatePasswordStrength(password)
             updatePasswordStrength(strength, strengthBar, strengthText)
@@ -90,7 +59,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Login form submission
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
-            console.log('Login form submitted')
             e.preventDefault()
             handleLogin(this)
         })
@@ -99,7 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Signup form submission
     if (signupForm) {
         signupForm.addEventListener('submit', function(e) {
-            console.log('Signup form submitted')
             e.preventDefault()
             handleSignup(this)
         })
@@ -112,13 +79,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         inputs.forEach(input => {
             input.addEventListener('blur', function() {
-                console.log('Input blur validation:', this.name || this.id)
                 validateField(this)
             })
 
             input.addEventListener('input', function() {
                 if (this.classList.contains('error')) {
-                    console.log('Input validation on change:', this.name || this.id)
                     validateField(this)
                 }
             })
@@ -129,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const googleBtns = document.querySelectorAll('.btn-google')
     googleBtns.forEach(btn => {
         btn.addEventListener('click', function(e) {
-            console.log('Google button clicked')
             e.preventDefault()
             handleGoogleAuth()
         })
@@ -310,13 +274,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
+            console.log('[v0] Attempting login with email:', loginData.email)
+            
             const { data, error } = await auth.signIn(loginData.email, loginData.password)
+            
+            console.log('[v0] Login response - data:', !!data, 'error:', !!error)
             
             if (error) {
                 throw new Error(error.message)
             }
 
             if (data.user) {
+                console.log('[v0] Login successful for user:', data.user.email)
                 showNotification('Login successful! Redirecting to dashboard...', 'success')
                 
                 // Store remember preference
@@ -326,11 +295,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Redirect to dashboard
                 setTimeout(() => {
+                    console.log('[v0] Redirecting to dashboard...')
                     window.location.href = 'dashboard.html'
                 }, 1500)
             }
         } catch (error) {
-            console.error('Login error:', error)
+            console.error('[v0] Login error:', error)
             showNotification(error.message || 'Login failed. Please check your credentials.', 'error')
             
             // Reset button
@@ -406,19 +376,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function checkExistingSession() {
         try {
+            console.log('[v0] Checking existing session...')
+            
             const isAuthenticated = await auth.isAuthenticated()
+            console.log('[v0] Session found:', isAuthenticated)
             
             if (isAuthenticated) {
                 // User is already logged in, redirect to dashboard
                 if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
                     showNotification('You are already logged in. Redirecting to dashboard...', 'info')
                     setTimeout(() => {
+                        console.log('[v0] Redirecting already logged-in user to dashboard...')
                         window.location.href = 'dashboard.html'
                     }, 1000)
                 }
             }
         } catch (error) {
-            console.error('Error checking session:', error)
+            console.error('[v0] Error checking session:', error)
         }
     }
 
